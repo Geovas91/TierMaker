@@ -15,14 +15,24 @@ import {
 import { ItemCard } from "./ItemCard";
 import { ItemTray } from "./ItemTray";
 import { TierRow } from "./TierRow";
-import type { ContainerId, TierId, TierItem } from "./types";
+import type { ContainerId, Tier, TierItem } from "./types";
 
-const tiers: { label: TierId; colorClassName: string }[] = [
-  { label: "S", colorClassName: "bg-rose-500" },
-  { label: "A", colorClassName: "bg-orange-400" },
-  { label: "B", colorClassName: "bg-amber-300" },
-  { label: "C", colorClassName: "bg-emerald-300" },
-  { label: "D", colorClassName: "bg-sky-300" },
+const initialTiers: Tier[] = [
+  { id: "tier-s", label: "S", colorClassName: "bg-rose-500", isDefault: true },
+  { id: "tier-a", label: "A", colorClassName: "bg-orange-400", isDefault: true },
+  { id: "tier-b", label: "B", colorClassName: "bg-amber-300", isDefault: true },
+  { id: "tier-c", label: "C", colorClassName: "bg-emerald-300", isDefault: true },
+  { id: "tier-d", label: "D", colorClassName: "bg-sky-300", isDefault: true },
+];
+
+const tierColorClasses = [
+  "bg-violet-300",
+  "bg-pink-300",
+  "bg-teal-300",
+  "bg-lime-300",
+  "bg-cyan-300",
+  "bg-fuchsia-300",
+  "bg-slate-300",
 ];
 
 const initialItems: TierItem[] = [
@@ -79,9 +89,11 @@ function DraggableCard({ item }: { item: TierItem }) {
 
 export function TierListBuilder() {
   const [items, setItems] = useState(initialItems);
+  const [tiers, setTiers] = useState(initialTiers);
   const [itemLocations, setItemLocations] = useState(initialLocations);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const customTierCountRef = useRef(0);
   const exportRef = useRef<HTMLElement | null>(null);
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
@@ -95,14 +107,25 @@ export function TierListBuilder() {
   );
 
   const itemsByContainer = useMemo(() => {
-    return items.reduce<Record<ContainerId, TierItem[]>>(
-      (groups, item) => {
-        groups[itemLocations[item.id]].push(item);
+    const emptyGroups = tiers.reduce<Record<ContainerId, TierItem[]>>(
+      (groups, tier) => {
+        groups[tier.id] = [];
         return groups;
       },
-      { tray: [], S: [], A: [], B: [], C: [], D: [] },
+      { tray: [] },
     );
-  }, [itemLocations, items]);
+
+    return items.reduce<Record<ContainerId, TierItem[]>>(
+      (groups, item) => {
+        const location = itemLocations[item.id];
+        const container = groups[location] ? location : "tray";
+
+        groups[container].push(item);
+        return groups;
+      },
+      emptyGroups,
+    );
+  }, [itemLocations, items, tiers]);
 
   const activeItem = activeItemId
     ? items.find((item) => item.id === activeItemId)
@@ -175,7 +198,10 @@ export function TierListBuilder() {
     }
 
     const targetContainer = String(overId) as ContainerId;
-    const validContainers: ContainerId[] = ["tray", "S", "A", "B", "C", "D"];
+    const validContainers: ContainerId[] = [
+      "tray",
+      ...tiers.map((tier) => tier.id),
+    ];
 
     if (!validContainers.includes(targetContainer)) {
       return;
@@ -185,6 +211,63 @@ export function TierListBuilder() {
       ...current,
       [activeId]: targetContainer,
     }));
+  }
+
+  function handleAddTier() {
+    const customIndex = customTierCountRef.current + 1;
+    const colorClassName =
+      tierColorClasses[customTierCountRef.current % tierColorClasses.length];
+
+    customTierCountRef.current = customIndex;
+
+    setTiers((current) => [
+      ...current,
+      {
+        id: `tier-custom-${Date.now()}-${customIndex}`,
+        label: `Nuevo ${customIndex}`,
+        colorClassName,
+      },
+    ]);
+  }
+
+  function handleUpdateTierLabel(tierId: string, label: string) {
+    setTiers((current) =>
+      current.map((tier) => (tier.id === tierId ? { ...tier, label } : tier)),
+    );
+  }
+
+  function handleDeleteTier(tierId: string) {
+    setTiers((current) =>
+      current.filter((tier) => tier.id !== tierId || tier.isDefault),
+    );
+    setItemLocations((current) => {
+      const next = { ...current };
+
+      Object.entries(next).forEach(([itemId, containerId]) => {
+        if (containerId === tierId) {
+          next[itemId] = "tray";
+        }
+      });
+
+      return next;
+    });
+  }
+
+  function handleMoveTier(tierId: string, direction: -1 | 1) {
+    setTiers((current) => {
+      const index = current.findIndex((tier) => tier.id === tierId);
+      const targetIndex = index + direction;
+
+      if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      const [tier] = next.splice(index, 1);
+
+      next.splice(targetIndex, 0, tier);
+      return next;
+    });
   }
 
   async function handleExportImage() {
@@ -232,6 +315,13 @@ export function TierListBuilder() {
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={handleAddTier}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+              >
+                Agregar tier
+              </button>
               <span className="w-fit rounded-md bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-950">
                 Arrastra y suelta
               </span>
@@ -247,13 +337,20 @@ export function TierListBuilder() {
           </div>
 
           <div className="grid gap-3">
-            {tiers.map((tier) => (
+            {tiers.map((tier, index) => (
               <TierRow
-                key={tier.label}
+                key={tier.id}
                 label={tier.label}
                 colorClassName={tier.colorClassName}
-                containerId={tier.label}
-                items={itemsByContainer[tier.label]}
+                containerId={tier.id}
+                items={itemsByContainer[tier.id]}
+                canDelete={!tier.isDefault}
+                canMoveDown={index < tiers.length - 1}
+                canMoveUp={index > 0}
+                onDelete={() => handleDeleteTier(tier.id)}
+                onLabelChange={(label) => handleUpdateTierLabel(tier.id, label)}
+                onMoveDown={() => handleMoveTier(tier.id, 1)}
+                onMoveUp={() => handleMoveTier(tier.id, -1)}
                 renderItem={(item) => <DraggableCard key={item.id} item={item} />}
               />
             ))}
