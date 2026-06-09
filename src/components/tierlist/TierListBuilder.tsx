@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  CollisionDetection,
   DndContext,
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
   MouseSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
   useDraggable,
   useSensor,
@@ -152,22 +155,20 @@ type RemoteTierListPayload = SavedTierListState & {
   title: string;
 };
 
-function DraggableCard({ item }: { item: TierItem }) {
-  const { attributes, isDragging, listeners, setNodeRef, transform } =
-    useDraggable({
-      id: item.id,
-    });
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
+  return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args);
+};
+
+function DraggableCard({ item }: { item: TierItem }) {
+  const { attributes, isDragging, listeners, setNodeRef } = useDraggable({
+    id: item.id,
+  });
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
       {...listeners}
       {...attributes}
       data-testid={`draggable-${item.id}`}
@@ -204,6 +205,8 @@ export function TierListBuilder() {
   const [selectedRemoteTierListId, setSelectedRemoteTierListId] = useState<
     string | null
   >(null);
+  const [selectedRemoteTierListIsPublic, setSelectedRemoteTierListIsPublic] =
+    useState<boolean | null>(null);
   const [remoteMessage, setRemoteMessage] = useState("");
   const [isRemoteBusy, setIsRemoteBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
@@ -301,6 +304,7 @@ export function TierListBuilder() {
           } else {
             setRemoteTierLists([]);
             setSelectedRemoteTierListId(null);
+            setSelectedRemoteTierListIsPublic(null);
           }
         });
 
@@ -558,6 +562,7 @@ export function TierListBuilder() {
       customTierCountRef.current = getNextCustomTierCount(parsedValue.tiers);
       setSelectedTemplateId("");
       setSelectedRemoteTierListId(null);
+      setSelectedRemoteTierListIsPublic(null);
       setStatusMessage("Progreso cargado.");
     } catch {
       setStatusMessage("No se pudo cargar el progreso guardado.");
@@ -582,6 +587,7 @@ export function TierListBuilder() {
     setActiveItemId(null);
     setSelectedTemplateId("");
     setSelectedRemoteTierListId(null);
+    setSelectedRemoteTierListIsPublic(null);
     customTierCountRef.current = 0;
     setStatusMessage("Tierlist reiniciada.");
   }
@@ -617,6 +623,7 @@ export function TierListBuilder() {
     setActiveItemId(null);
     setSelectedTemplateId(templateId);
     setSelectedRemoteTierListId(null);
+    setSelectedRemoteTierListIsPublic(null);
     customTierCountRef.current = 0;
     setStatusMessage(`Plantilla "${template.name}" cargada.`);
   }
@@ -661,6 +668,7 @@ export function TierListBuilder() {
         }
 
         setRemoteMessage("Tierlist actualizada en tu cuenta.");
+        setSelectedRemoteTierListIsPublic(isPublic);
       } else {
         const { data, error } = await supabase
           .from("tier_lists")
@@ -681,6 +689,7 @@ export function TierListBuilder() {
         const savedTierList = data as RemoteTierListSummary;
 
         setSelectedRemoteTierListId(savedTierList.id);
+        setSelectedRemoteTierListIsPublic(savedTierList.is_public);
         setRemoteMessage("Tierlist guardada en tu cuenta.");
       }
 
@@ -741,6 +750,7 @@ export function TierListBuilder() {
       customTierCountRef.current = getNextCustomTierCount(remoteTierList.data.tiers);
       setSelectedTemplateId("");
       setSelectedRemoteTierListId(remoteTierList.id);
+      setSelectedRemoteTierListIsPublic(remoteTierList.is_public);
       setRemoteMessage("Tierlist cargada desde tu cuenta.");
     } catch (error) {
       if (error instanceof Error) {
@@ -775,29 +785,59 @@ export function TierListBuilder() {
     }
   }
 
-  async function handleCopyPublicLink() {
+  function copyTextWithFallback(value: string) {
+    const textArea = document.createElement("textarea");
+
+    textArea.value = value;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.select();
+
+    try {
+      return document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+
+  async function handleShareTierList() {
     if (!selectedRemoteTierListId) {
-      setRemoteMessage("Guarda la tierlist en tu cuenta antes de copiar un enlace.");
+      setRemoteMessage("Guarda la tierlist en tu cuenta antes de compartirla.");
       return;
     }
 
-    if (!isPublic) {
-      setRemoteMessage("Marca la tierlist como publica y guardala antes de compartir.");
+    if (!selectedRemoteTierListIsPublic) {
+      setRemoteMessage(
+        "Marca la tierlist como publica y guardala antes de compartirla.",
+      );
       return;
     }
 
     const publicUrl = `${window.location.origin}/tierlist/${selectedRemoteTierListId}`;
 
     try {
-      await navigator.clipboard.writeText(publicUrl);
-      setRemoteMessage("Enlace publico copiado.");
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(publicUrl);
+        setRemoteMessage("Enlace publico copiado al portapapeles.");
+        return;
+      }
+
+      if (copyTextWithFallback(publicUrl)) {
+        setRemoteMessage("Enlace publico copiado al portapapeles.");
+        return;
+      }
+
+      setRemoteMessage(`Copia este enlace publico: ${publicUrl}`);
     } catch {
-      setRemoteMessage(publicUrl);
+      setRemoteMessage(`Copia este enlace publico: ${publicUrl}`);
     }
   }
 
   return (
     <DndContext
+      collisionDetection={collisionDetection}
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -867,10 +907,10 @@ export function TierListBuilder() {
               </label>
               <button
                 type="button"
-                onClick={handleCopyPublicLink}
+                onClick={handleShareTierList}
                 className="inline-flex h-11 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 sm:h-10"
               >
-                Copiar enlace publico
+                Compartir tierlist
               </button>
               <button
                 type="button"

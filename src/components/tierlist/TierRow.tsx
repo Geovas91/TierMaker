@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import type { ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
@@ -38,6 +38,7 @@ export function TierRow({
 
   return (
     <section
+      ref={setNodeRef}
       className={`grid overflow-hidden rounded-lg border bg-white shadow-sm transition sm:grid-cols-[6rem_1fr] ${
         isOver ? "border-rose-300 shadow-rose-200/70" : "border-slate-200"
       }`}
@@ -76,7 +77,6 @@ export function TierRow({
           ) : null}
         </div>
         <div
-          ref={setNodeRef}
           data-testid={`tier-dropzone-${containerId}`}
           className={`min-h-24 rounded-md border border-dashed px-4 py-4 transition ${
             isOver

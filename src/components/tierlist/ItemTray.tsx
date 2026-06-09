@@ -14,7 +14,10 @@ export function ItemTray({ items, onUploadImages, renderItem }: ItemTrayProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "tray" });
 
   return (
-    <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <aside
+      ref={setNodeRef}
+      className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">
@@ -51,7 +54,6 @@ export function ItemTray({ items, onUploadImages, renderItem }: ItemTrayProps) {
       </div>
 
       <div
-        ref={setNodeRef}
         data-testid="item-tray-dropzone"
         className={`mt-5 min-h-36 rounded-md border border-dashed p-3 transition ${
           isOver
