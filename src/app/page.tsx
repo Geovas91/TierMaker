@@ -68,7 +68,7 @@ export default function Home() {
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
-                href="#cta"
+                href="/crear"
                 className="inline-flex h-12 items-center justify-center rounded-md bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 Empezar proyecto
@@ -200,7 +200,7 @@ export default function Home() {
             </h2>
           </div>
           <a
-            href="#"
+            href="/crear"
             className="inline-flex h-12 items-center justify-center rounded-md bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
           >
             Crear mi primera tier list
