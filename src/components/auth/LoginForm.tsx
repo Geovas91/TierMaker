@@ -44,6 +44,31 @@ export function LoginForm() {
     }
   }
 
+  async function handleGoogleLogin() {
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/crear`,
+        },
+      });
+
+      if (error) {
+        setMessage(error.message);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setMessage(error.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6">
@@ -82,6 +107,23 @@ export function LoginForm() {
         >
           Signup
         </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
+        className="mb-5 inline-flex h-11 w-full items-center justify-center rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Continuar con Google
+      </button>
+
+      <div className="mb-5 flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          o usa email
+        </span>
+        <div className="h-px flex-1 bg-slate-200" />
       </div>
 
       <form className="grid gap-4" onSubmit={handleSubmit}>

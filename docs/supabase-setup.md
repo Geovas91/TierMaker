@@ -28,4 +28,18 @@ This migration is not run automatically. To apply it manually:
 
 The migration creates `public.tier_lists`, enables Row Level Security, lets users manage their own tier lists, and allows anyone to read tier lists marked as public.
 
+## Google OAuth
+
+Google login uses Supabase Auth with the Google provider. No Google credentials are stored in this repository.
+
+To enable it:
+
+1. Create OAuth credentials in Google Cloud Console.
+2. In Supabase, open Authentication > Providers > Google.
+3. Enable Google.
+4. Paste the Google Client ID and Client Secret in the Supabase dashboard.
+5. Add the Supabase callback URL shown in the Google provider settings to the Google OAuth authorized redirect URIs.
+6. Add the app URL, such as `http://localhost:3000` for local development and the production domain later, to Supabase Authentication > URL Configuration.
+7. Confirm `/crear` is allowed as a post-login redirect target in Supabase redirect URL settings when needed.
+
 Do not commit real credentials.
