@@ -17,6 +17,7 @@ type PublicTierListRow = {
   data: unknown;
   id: string;
   title: string;
+  user_id: string;
 };
 
 type PublicTierListViewProps = {
@@ -52,7 +53,7 @@ export function PublicTierListView({ id }: PublicTierListViewProps) {
         const supabase = createSupabaseBrowserClient();
         const { data, error } = await supabase
           .from("tier_lists")
-          .select("id,title,data")
+          .select("id,title,user_id,data")
           .eq("id", id)
           .eq("is_public", true)
           .maybeSingle();
@@ -181,6 +182,12 @@ export function PublicTierListView({ id }: PublicTierListViewProps) {
           <h1 className="mt-2 text-4xl font-semibold text-slate-950">
             {tierList.title}
           </h1>
+          <Link
+            href={`/u/${tierList.user_id}`}
+            className="mt-3 inline-flex text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+          >
+            Ver perfil del creador
+          </Link>
         </div>
         <button
           type="button"
