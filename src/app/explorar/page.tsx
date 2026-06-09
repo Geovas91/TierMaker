@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AdPlaceholder } from "@/components/ads/AdPlaceholder";
 import { AuthStatus } from "@/components/auth/AuthStatus";
 import { PublicTierListExplore } from "@/components/tierlist/PublicTierListExplore";
 
@@ -59,6 +60,9 @@ export default function ExplorarPage() {
           </div>
 
           <PublicTierListExplore />
+          <div className="mt-8">
+            <AdPlaceholder />
+          </div>
         </div>
       </section>
     </main>

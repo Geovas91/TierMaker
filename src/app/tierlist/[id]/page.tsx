@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdPlaceholder } from "@/components/ads/AdPlaceholder";
 import { PublicTierListView } from "@/components/tierlist/PublicTierListView";
 
 type PublicTierListPageProps = {
@@ -31,6 +32,9 @@ export default async function PublicTierListPage({
       <section className="px-6 py-10 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-7xl">
           <PublicTierListView id={id} />
+          <div className="mt-8">
+            <AdPlaceholder />
+          </div>
         </div>
       </section>
     </main>

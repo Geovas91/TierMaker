@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AdPlaceholder } from "@/components/ads/AdPlaceholder";
 import { AuthStatus } from "@/components/auth/AuthStatus";
 
 export const metadata: Metadata = {
@@ -194,6 +195,12 @@ export default function Home() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="border-b border-slate-200 bg-slate-50 px-6 py-8 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-7xl">
+          <AdPlaceholder />
         </div>
       </section>
 
