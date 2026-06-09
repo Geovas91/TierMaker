@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth/AuthStatus";
-import { TierListBuilder } from "@/components/tierlist/TierListBuilder";
+import { PublicTierListExplore } from "@/components/tierlist/PublicTierListExplore";
 
-export default function CrearPage() {
+export default function ExplorarPage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <header className="border-b border-slate-200 bg-white px-6 py-5 sm:px-8 lg:px-12">
@@ -12,16 +12,10 @@ export default function CrearPage() {
           </Link>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
-              href="/"
+              href="/crear"
               className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
             >
-              Volver al inicio
-            </Link>
-            <Link
-              href="/explorar"
-              className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              Explorar
+              Crear tierlist
             </Link>
             <AuthStatus />
           </div>
@@ -32,19 +26,17 @@ export default function CrearPage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">
-              Constructor interactivo
+              Comunidad
             </p>
             <h1 className="mt-3 text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">
-              Crea una tier list visual en minutos.
+              Explora tierlists publicas.
             </h1>
             <p className="mt-4 text-lg leading-8 text-slate-600">
-              Esta primera version muestra la estructura del editor: niveles
-              configurados, areas para items y una bandeja con tarjetas de
-              ejemplo que puedes arrastrar.
+              Descubre rankings compartidos por otros usuarios de TierMaker.
             </p>
           </div>
 
-          <TierListBuilder />
+          <PublicTierListExplore />
         </div>
       </section>
     </main>

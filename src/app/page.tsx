@@ -62,7 +62,15 @@ export default function Home() {
             <Link href="/" className="text-xl font-black tracking-tight">
               TierMaker
             </Link>
-            <AuthStatus />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link
+                href="/explorar"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Explorar
+              </Link>
+              <AuthStatus />
+            </div>
           </header>
 
           <div className="grid min-h-[82vh] items-center gap-12 lg:grid-cols-[0.92fr_1.08fr]">
@@ -78,18 +86,18 @@ export default function Home() {
               prepara listas fáciles de personalizar, guardar y compartir.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a
+              <Link
                 href="/crear"
                 className="inline-flex h-12 items-center justify-center rounded-md bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 Empezar proyecto
-              </a>
-              <a
-                href="#features"
+              </Link>
+              <Link
+                href="/explorar"
                 className="inline-flex h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-100"
               >
-                Ver funciones
-              </a>
+                Explorar publicas
+              </Link>
             </div>
           </div>
 
