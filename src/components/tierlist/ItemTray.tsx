@@ -1,32 +1,17 @@
-import { ItemCard } from "./ItemCard";
+"use client";
 
-const sampleItems = [
-  "Personaje 01",
-  "Personaje 02",
-  "Personaje 03",
-  "Personaje 04",
-  "Personaje 05",
-  "Personaje 06",
-  "Personaje 07",
-  "Personaje 08",
-  "Personaje 09",
-  "Personaje 10",
-];
+import type { ReactNode } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import type { TierItem } from "./types";
 
-const accents = [
-  "bg-rose-200",
-  "bg-orange-200",
-  "bg-amber-200",
-  "bg-lime-200",
-  "bg-emerald-200",
-  "bg-cyan-200",
-  "bg-sky-200",
-  "bg-indigo-200",
-  "bg-fuchsia-200",
-  "bg-slate-200",
-];
+type ItemTrayProps = {
+  items: TierItem[];
+  renderItem: (item: TierItem) => ReactNode;
+};
 
-export function ItemTray() {
+export function ItemTray({ items, renderItem }: ItemTrayProps) {
+  const { isOver, setNodeRef } = useDroppable({ id: "tray" });
+
   return (
     <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -38,17 +23,25 @@ export function ItemTray() {
             Elementos de ejemplo
           </h2>
         </div>
-        <p className="text-sm text-slate-500">10 tarjetas placeholder</p>
+        <p className="text-sm text-slate-500">{items.length} tarjetas disponibles</p>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {sampleItems.map((item, index) => (
-          <ItemCard
-            key={item}
-            title={item}
-            accentClassName={accents[index]}
-          />
-        ))}
+      <div
+        ref={setNodeRef}
+        data-testid="item-tray-dropzone"
+        className={`mt-5 min-h-36 rounded-md border border-dashed p-3 transition ${
+          isOver ? "border-rose-400 bg-rose-50" : "border-transparent bg-slate-50"
+        }`}
+      >
+        {items.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {items.map(renderItem)}
+          </div>
+        ) : (
+          <div className="flex min-h-28 items-center justify-center text-center text-sm font-medium text-slate-400">
+            Todos los elementos estan ubicados en tiers
+          </div>
+        )}
       </div>
     </aside>
   );

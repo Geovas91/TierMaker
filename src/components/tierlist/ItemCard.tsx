@@ -1,11 +1,14 @@
 type ItemCardProps = {
   title: string;
   accentClassName: string;
+  className?: string;
 };
 
-export function ItemCard({ title, accentClassName }: ItemCardProps) {
+export function ItemCard({ title, accentClassName, className = "" }: ItemCardProps) {
   return (
-    <article className="group overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article
+      className={`group overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${className}`}
+    >
       <div
         className={`${accentClassName} flex aspect-square items-center justify-center text-sm font-bold text-slate-950`}
       >
