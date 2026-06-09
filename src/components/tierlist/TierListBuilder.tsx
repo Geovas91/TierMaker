@@ -130,6 +130,7 @@ const initialLocations = initialItems.reduce<Record<string, ContainerId>>(
 );
 
 type SavedTierListState = {
+  isPublic?: boolean;
   itemLocations: Record<string, ContainerId>;
   items: TierItem[];
   tiers: Tier[];
@@ -140,6 +141,7 @@ type RemoteTierList = {
   created_at: string;
   data: unknown;
   id: string;
+  is_public: boolean;
   title: string;
   updated_at: string;
 };
@@ -204,6 +206,7 @@ export function TierListBuilder() {
   >(null);
   const [remoteMessage, setRemoteMessage] = useState("");
   const [isRemoteBusy, setIsRemoteBusy] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
   const customTierCountRef = useRef(0);
   const exportRef = useRef<HTMLDivElement | null>(null);
 
@@ -246,7 +249,7 @@ export function TierListBuilder() {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("tier_lists")
-        .select("id,title,created_at,updated_at")
+        .select("id,title,is_public,created_at,updated_at")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false });
 
@@ -520,6 +523,7 @@ export function TierListBuilder() {
 
   function handleSaveProgress() {
     const stateToSave: SavedTierListState = {
+      isPublic,
       itemLocations,
       items,
       tiers,
@@ -549,6 +553,7 @@ export function TierListBuilder() {
       setItems(parsedValue.items);
       setTiers(parsedValue.tiers);
       setItemLocations(parsedValue.itemLocations);
+      setIsPublic(parsedValue.isPublic ?? false);
       setTierListTitle(parsedValue.title ?? defaultTierListTitle);
       customTierCountRef.current = getNextCustomTierCount(parsedValue.tiers);
       setSelectedTemplateId("");
@@ -573,6 +578,7 @@ export function TierListBuilder() {
     setTiers(initialTiers);
     setItemLocations(getResetLocations());
     setTierListTitle(defaultTierListTitle);
+    setIsPublic(false);
     setActiveItemId(null);
     setSelectedTemplateId("");
     setSelectedRemoteTierListId(null);
@@ -607,6 +613,7 @@ export function TierListBuilder() {
     setTiers(initialTiers);
     setItemLocations(buildTrayLocations(templateItems));
     setTierListTitle(`${template.name} tier list`);
+    setIsPublic(false);
     setActiveItemId(null);
     setSelectedTemplateId(templateId);
     setSelectedRemoteTierListId(null);
@@ -616,6 +623,7 @@ export function TierListBuilder() {
 
   function buildRemotePayload(): RemoteTierListPayload {
     return {
+      isPublic,
       itemLocations,
       items,
       tiers,
@@ -641,6 +649,7 @@ export function TierListBuilder() {
           .from("tier_lists")
           .update({
             data: payload,
+            is_public: isPublic,
             title: tierListTitle.trim() || defaultTierListTitle,
           })
           .eq("id", selectedRemoteTierListId)
@@ -657,11 +666,11 @@ export function TierListBuilder() {
           .from("tier_lists")
           .insert({
             data: payload,
-            is_public: false,
+            is_public: isPublic,
             title: tierListTitle.trim() || defaultTierListTitle,
             user_id: authUser.id,
           })
-          .select("id,title,created_at,updated_at")
+          .select("id,title,is_public,created_at,updated_at")
           .single();
 
         if (error) {
@@ -707,7 +716,7 @@ export function TierListBuilder() {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("tier_lists")
-        .select("id,title,data,created_at,updated_at")
+        .select("id,title,is_public,data,created_at,updated_at")
         .eq("id", tierListId)
         .eq("user_id", authUser.id)
         .single();
@@ -727,6 +736,7 @@ export function TierListBuilder() {
       setItems(remoteTierList.data.items);
       setTiers(remoteTierList.data.tiers);
       setItemLocations(remoteTierList.data.itemLocations);
+      setIsPublic(remoteTierList.is_public);
       setTierListTitle(remoteTierList.title);
       customTierCountRef.current = getNextCustomTierCount(remoteTierList.data.tiers);
       setSelectedTemplateId("");
@@ -762,6 +772,27 @@ export function TierListBuilder() {
       link.click();
     } finally {
       setIsExporting(false);
+    }
+  }
+
+  async function handleCopyPublicLink() {
+    if (!selectedRemoteTierListId) {
+      setRemoteMessage("Guarda la tierlist en tu cuenta antes de copiar un enlace.");
+      return;
+    }
+
+    if (!isPublic) {
+      setRemoteMessage("Marca la tierlist como publica y guardala antes de compartir.");
+      return;
+    }
+
+    const publicUrl = `${window.location.origin}/tierlist/${selectedRemoteTierListId}`;
+
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setRemoteMessage("Enlace publico copiado.");
+    } catch {
+      setRemoteMessage(publicUrl);
     }
   }
 
@@ -824,6 +855,22 @@ export function TierListBuilder() {
                 className="inline-flex h-11 items-center justify-center rounded-md bg-emerald-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10"
               >
                 {isRemoteBusy ? "Guardando..." : "Guardar en mi cuenta"}
+              </button>
+              <label className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 sm:h-10">
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(event) => setIsPublic(event.target.checked)}
+                  className="h-4 w-4 accent-emerald-300"
+                />
+                {isPublic ? "Publica" : "Privada"}
+              </label>
+              <button
+                type="button"
+                onClick={handleCopyPublicLink}
+                className="inline-flex h-11 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 sm:h-10"
+              >
+                Copiar enlace publico
               </button>
               <button
                 type="button"
@@ -921,10 +968,21 @@ export function TierListBuilder() {
                           <p className="font-semibold text-white">
                             {tierList.title}
                           </p>
-                          <p className="mt-1 text-xs text-slate-400">
-                            Actualizada:{" "}
-                            {new Date(tierList.updated_at).toLocaleString()}
-                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                            <span>
+                              Actualizada:{" "}
+                              {new Date(tierList.updated_at).toLocaleString()}
+                            </span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 font-semibold ${
+                                tierList.is_public
+                                  ? "bg-emerald-300 text-slate-950"
+                                  : "bg-slate-800 text-slate-300"
+                              }`}
+                            >
+                              {tierList.is_public ? "Publica" : "Privada"}
+                            </span>
+                          </div>
                         </div>
                         <button
                           type="button"
