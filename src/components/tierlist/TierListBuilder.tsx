@@ -37,6 +37,73 @@ const tierColorClasses = [
   "bg-slate-300",
 ];
 
+const templates = [
+  {
+    id: "anime",
+    name: "Anime",
+    items: [
+      "Naruto Uzumaki",
+      "Monkey D. Luffy",
+      "Goku",
+      "Sailor Moon",
+      "Levi Ackerman",
+      "Tanjiro Kamado",
+      "Edward Elric",
+      "Asuka Langley",
+      "Totoro",
+      "Light Yagami",
+    ],
+  },
+  {
+    id: "videojuegos",
+    name: "Videojuegos",
+    items: [
+      "The Legend of Zelda",
+      "Minecraft",
+      "Elden Ring",
+      "Super Mario Odyssey",
+      "Halo",
+      "Fortnite",
+      "God of War",
+      "Resident Evil",
+      "Stardew Valley",
+      "Final Fantasy VII",
+    ],
+  },
+  {
+    id: "peliculas",
+    name: "Películas",
+    items: [
+      "El Padrino",
+      "Matrix",
+      "Toy Story",
+      "Interestelar",
+      "Parasite",
+      "Titanic",
+      "Mad Max: Fury Road",
+      "La La Land",
+      "Spider-Man 2",
+      "Coco",
+    ],
+  },
+  {
+    id: "series",
+    name: "Series",
+    items: [
+      "Breaking Bad",
+      "The Office",
+      "Stranger Things",
+      "Los Soprano",
+      "Game of Thrones",
+      "Dark",
+      "The Last of Us",
+      "Friends",
+      "Better Call Saul",
+      "The Bear",
+    ],
+  },
+] as const;
+
 const initialItems: TierItem[] = [
   { id: "item-01", title: "Personaje 01", accentClassName: "bg-rose-200" },
   { id: "item-02", title: "Personaje 02", accentClassName: "bg-orange-200" },
@@ -101,6 +168,7 @@ export function TierListBuilder() {
   const [itemLocations, setItemLocations] = useState(initialLocations);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const customTierCountRef = useRef(0);
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -149,6 +217,29 @@ export function TierListBuilder() {
 
   function getTitleFromFilename(filename: string) {
     return filename.replace(/\.[^/.]+$/, "") || "Imagen subida";
+  }
+
+  function buildTemplateItems(template: (typeof templates)[number]) {
+    return template.items.map<TierItem>((title, index) => ({
+      id: `template-${template.id}-${index + 1}`,
+      title,
+      accentClassName: tierColorClasses[index % tierColorClasses.length],
+    }));
+  }
+
+  function buildTrayLocations(nextItems: TierItem[]) {
+    return nextItems.reduce<Record<string, ContainerId>>((locations, item) => {
+      locations[item.id] = "tray";
+      return locations;
+    }, {});
+  }
+
+  function hasExistingProgress() {
+    return (
+      JSON.stringify(items) !== JSON.stringify(initialItems) ||
+      JSON.stringify(tiers) !== JSON.stringify(initialTiers) ||
+      JSON.stringify(itemLocations) !== JSON.stringify(initialLocations)
+    );
   }
 
   function readImageAsDataUrl(file: File) {
@@ -341,6 +432,7 @@ export function TierListBuilder() {
       setTiers(parsedValue.tiers);
       setItemLocations(parsedValue.itemLocations);
       customTierCountRef.current = getNextCustomTierCount(parsedValue.tiers);
+      setSelectedTemplateId("");
       setStatusMessage("Progreso cargado.");
     } catch {
       setStatusMessage("No se pudo cargar el progreso guardado.");
@@ -352,8 +444,41 @@ export function TierListBuilder() {
     setTiers(initialTiers);
     setItemLocations(getResetLocations());
     setActiveItemId(null);
+    setSelectedTemplateId("");
     customTierCountRef.current = 0;
     setStatusMessage("Tierlist reiniciada.");
+  }
+
+  function handleTemplateChange(templateId: string) {
+    if (!templateId) {
+      setSelectedTemplateId("");
+      return;
+    }
+
+    const template = templates.find((templateItem) => templateItem.id === templateId);
+
+    if (!template) {
+      return;
+    }
+
+    if (
+      hasExistingProgress() &&
+      !window.confirm(
+        "Cargar una plantilla reemplazara la tierlist actual. ¿Quieres continuar?",
+      )
+    ) {
+      return;
+    }
+
+    const templateItems = buildTemplateItems(template);
+
+    setItems(templateItems);
+    setTiers(initialTiers);
+    setItemLocations(buildTrayLocations(templateItems));
+    setActiveItemId(null);
+    setSelectedTemplateId(templateId);
+    customTierCountRef.current = 0;
+    setStatusMessage(`Plantilla "${template.name}" cargada.`);
   }
 
   async function handleExportImage() {
@@ -397,6 +522,25 @@ export function TierListBuilder() {
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label
+                htmlFor="tier-template-selector"
+                className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-300"
+              >
+                Plantilla
+                <select
+                  id="tier-template-selector"
+                  value={selectedTemplateId}
+                  onChange={(event) => handleTemplateChange(event.target.value)}
+                  className="h-10 rounded-md border border-white/15 bg-slate-800 px-3 text-sm font-semibold normal-case tracking-normal text-white outline-none transition hover:bg-slate-700 focus:border-amber-300"
+                >
+                  <option value="">Elegir plantilla</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="button"
                 onClick={handleSaveProgress}
