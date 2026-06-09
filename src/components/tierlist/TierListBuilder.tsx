@@ -81,6 +81,8 @@ export function TierListBuilder() {
   const [items, setItems] = useState(initialItems);
   const [itemLocations, setItemLocations] = useState(initialLocations);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const exportRef = useRef<HTMLElement | null>(null);
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
   const sensors = useSensors(
@@ -185,6 +187,30 @@ export function TierListBuilder() {
     }));
   }
 
+  async function handleExportImage() {
+    if (!exportRef.current || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(exportRef.current, {
+        backgroundColor: "#020617",
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      const link = document.createElement("a");
+
+      link.download = "tierlist.png";
+      link.href = dataUrl;
+      link.click();
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -193,7 +219,11 @@ export function TierListBuilder() {
       onDragCancel={() => setActiveItemId(null)}
     >
       <div className="grid gap-6">
-        <section className="rounded-lg border border-slate-200 bg-slate-950 p-3 shadow-xl shadow-slate-200">
+        <section
+          ref={exportRef}
+          data-testid="tierlist-export-area"
+          className="rounded-lg border border-slate-200 bg-slate-950 p-3 shadow-xl shadow-slate-200"
+        >
           <div className="mb-3 flex flex-col gap-3 rounded-md bg-slate-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-white">Mi nueva tier list</p>
@@ -201,9 +231,19 @@ export function TierListBuilder() {
                 Borrador local, listo para organizar tus elementos.
               </p>
             </div>
-            <span className="w-fit rounded-md bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-950">
-              Arrastra y suelta
-            </span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="w-fit rounded-md bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-950">
+                Arrastra y suelta
+              </span>
+              <button
+                type="button"
+                onClick={handleExportImage}
+                disabled={isExporting}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-amber-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isExporting ? "Exportando..." : "Exportar como imagen"}
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-3">
