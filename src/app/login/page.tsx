@@ -1,5 +1,31 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/LoginForm";
+
+export const metadata: Metadata = {
+  title: "Iniciar sesion",
+  description:
+    "Inicia sesion en TierMaker para guardar, cargar y publicar tus tier lists.",
+  alternates: {
+    canonical: "/login",
+  },
+  openGraph: {
+    title: "Iniciar sesion | TierMaker",
+    description:
+      "Accede a tu cuenta para guardar y administrar tus tier lists en TierMaker.",
+    url: "/login",
+  },
+  twitter: {
+    card: "summary",
+    title: "Iniciar sesion | TierMaker",
+    description:
+      "Accede a tu cuenta para guardar y administrar tus tier lists.",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function LoginPage() {
   return (

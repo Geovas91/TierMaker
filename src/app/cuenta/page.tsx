@@ -1,5 +1,30 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountView } from "@/components/account/AccountView";
+
+export const metadata: Metadata = {
+  title: "Mi cuenta",
+  description:
+    "Administra tu perfil y revisa la informacion de tu cuenta de TierMaker.",
+  alternates: {
+    canonical: "/cuenta",
+  },
+  openGraph: {
+    title: "Mi cuenta | TierMaker",
+    description:
+      "Administra tu perfil y tus datos de cuenta en TierMaker.",
+    url: "/cuenta",
+  },
+  twitter: {
+    card: "summary",
+    title: "Mi cuenta | TierMaker",
+    description: "Administra tu perfil y tus datos de cuenta en TierMaker.",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function AccountPage() {
   return (

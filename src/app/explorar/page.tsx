@@ -1,6 +1,28 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth/AuthStatus";
 import { PublicTierListExplore } from "@/components/tierlist/PublicTierListExplore";
+
+export const metadata: Metadata = {
+  title: "Explorar tier lists publicas",
+  description:
+    "Explora tier lists publicas creadas por la comunidad, busca por titulo y ordena rankings compartidos.",
+  alternates: {
+    canonical: "/explorar",
+  },
+  openGraph: {
+    title: "Explorar tier lists publicas | TierMaker",
+    description:
+      "Descubre rankings compartidos por otros usuarios y abre tier lists publicas en TierMaker.",
+    url: "/explorar",
+  },
+  twitter: {
+    card: "summary",
+    title: "Explorar tier lists publicas | TierMaker",
+    description:
+      "Descubre rankings compartidos por otros usuarios en TierMaker.",
+  },
+};
 
 export default function ExplorarPage() {
   return (

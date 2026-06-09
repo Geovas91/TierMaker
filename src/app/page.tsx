@@ -1,5 +1,27 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth/AuthStatus";
+
+export const metadata: Metadata = {
+  title: "Crea y comparte tier lists",
+  description:
+    "Crea rankings visuales, organiza tus favoritos por niveles y comparte tier lists publicas con la comunidad.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "TierMaker | Crea y comparte tier lists",
+    description:
+      "Crea rankings visuales, organiza tus favoritos y comparte tier lists publicas.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: "TierMaker | Crea y comparte tier lists",
+    description:
+      "Crea rankings visuales, organiza tus favoritos y comparte tier lists publicas.",
+  },
+};
 
 const tiers = [
   {

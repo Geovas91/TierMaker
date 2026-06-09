@@ -1,6 +1,28 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth/AuthStatus";
 import { TierListBuilder } from "@/components/tierlist/TierListBuilder";
+
+export const metadata: Metadata = {
+  title: "Crear tier list",
+  description:
+    "Usa el editor visual de TierMaker para crear, personalizar, guardar y publicar tu propia tier list.",
+  alternates: {
+    canonical: "/crear",
+  },
+  openGraph: {
+    title: "Crear tier list | TierMaker",
+    description:
+      "Construye rankings visuales con tiers personalizables, guardado en cuenta y enlaces publicos.",
+    url: "/crear",
+  },
+  twitter: {
+    card: "summary",
+    title: "Crear tier list | TierMaker",
+    description:
+      "Construye rankings visuales con tiers personalizables y enlaces publicos.",
+  },
+};
 
 export default function CrearPage() {
   return (
