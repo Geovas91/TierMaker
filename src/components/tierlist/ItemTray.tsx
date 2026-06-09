@@ -6,15 +6,16 @@ import type { TierItem } from "./types";
 
 type ItemTrayProps = {
   items: TierItem[];
+  onUploadImages: (files: FileList) => void;
   renderItem: (item: TierItem) => ReactNode;
 };
 
-export function ItemTray({ items, renderItem }: ItemTrayProps) {
+export function ItemTray({ items, onUploadImages, renderItem }: ItemTrayProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "tray" });
 
   return (
     <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">
             Bandeja de items
@@ -23,7 +24,26 @@ export function ItemTray({ items, renderItem }: ItemTrayProps) {
             Elementos de ejemplo
           </h2>
         </div>
-        <p className="text-sm text-slate-500">{items.length} tarjetas disponibles</p>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+            Subir imagenes
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="sr-only"
+              onChange={(event) => {
+                if (event.target.files?.length) {
+                  onUploadImages(event.target.files);
+                  event.target.value = "";
+                }
+              }}
+            />
+          </label>
+          <p className="text-sm text-slate-500">
+            {items.length} tarjetas disponibles
+          </p>
+        </div>
       </div>
 
       <div

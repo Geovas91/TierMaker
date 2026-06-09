@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -70,6 +70,7 @@ function DraggableCard({ item }: { item: TierItem }) {
       <ItemCard
         title={item.title}
         accentClassName={item.accentClassName}
+        imageUrl={item.imageUrl}
         className={isDragging ? "opacity-40" : "cursor-grab active:cursor-grabbing"}
       />
     </div>
@@ -77,8 +78,10 @@ function DraggableCard({ item }: { item: TierItem }) {
 }
 
 export function TierListBuilder() {
+  const [items, setItems] = useState(initialItems);
   const [itemLocations, setItemLocations] = useState(initialLocations);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -90,18 +93,70 @@ export function TierListBuilder() {
   );
 
   const itemsByContainer = useMemo(() => {
-    return initialItems.reduce<Record<ContainerId, TierItem[]>>(
+    return items.reduce<Record<ContainerId, TierItem[]>>(
       (groups, item) => {
         groups[itemLocations[item.id]].push(item);
         return groups;
       },
       { tray: [], S: [], A: [], B: [], C: [], D: [] },
     );
-  }, [itemLocations]);
+  }, [itemLocations, items]);
 
   const activeItem = activeItemId
-    ? initialItems.find((item) => item.id === activeItemId)
+    ? items.find((item) => item.id === activeItemId)
     : undefined;
+
+  useEffect(() => {
+    const objectUrls = objectUrlsRef.current;
+
+    return () => {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.clear();
+    };
+  }, []);
+
+  function createUploadId(file: File) {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return `upload-${crypto.randomUUID()}`;
+    }
+
+    return `upload-${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  function getTitleFromFilename(filename: string) {
+    return filename.replace(/\.[^/.]+$/, "") || "Imagen subida";
+  }
+
+  function handleUploadImages(files: FileList) {
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    if (imageFiles.length === 0) {
+      return;
+    }
+
+    const uploadedItems = imageFiles.map<TierItem>((file) => {
+      const imageUrl = URL.createObjectURL(file);
+      objectUrlsRef.current.add(imageUrl);
+
+      return {
+        id: createUploadId(file),
+        title: getTitleFromFilename(file.name),
+        accentClassName: "bg-slate-200",
+        imageUrl,
+      };
+    });
+
+    setItems((current) => [...current, ...uploadedItems]);
+    setItemLocations((current) => ({
+      ...current,
+      ...uploadedItems.reduce<Record<string, ContainerId>>((locations, item) => {
+        locations[item.id] = "tray";
+        return locations;
+      }, {}),
+    }));
+  }
 
   function handleDragStart(event: DragStartEvent) {
     setActiveItemId(String(event.active.id));
@@ -167,6 +222,7 @@ export function TierListBuilder() {
 
         <ItemTray
           items={itemsByContainer.tray}
+          onUploadImages={handleUploadImages}
           renderItem={(item) => <DraggableCard key={item.id} item={item} />}
         />
       </div>
@@ -176,6 +232,7 @@ export function TierListBuilder() {
           <ItemCard
             title={activeItem.title}
             accentClassName={activeItem.accentClassName}
+            imageUrl={activeItem.imageUrl}
             className="rotate-2 cursor-grabbing shadow-xl"
           />
         ) : null}

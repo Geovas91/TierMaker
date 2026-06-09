@@ -6,4 +6,5 @@ export type TierItem = {
   id: string;
   title: string;
   accentClassName: string;
+  imageUrl?: string;
 };
