@@ -156,7 +156,11 @@ function DraggableCard({ item }: { item: TierItem }) {
         title={item.title}
         accentClassName={item.accentClassName}
         imageUrl={item.imageUrl}
-        className={isDragging ? "opacity-40" : "cursor-grab active:cursor-grabbing"}
+        className={
+          isDragging
+            ? "scale-95 opacity-35 ring-2 ring-rose-300"
+            : "cursor-grab active:cursor-grabbing"
+        }
       />
     </div>
   );
@@ -440,6 +444,15 @@ export function TierListBuilder() {
   }
 
   function handleResetTierList() {
+    if (
+      hasExistingProgress() &&
+      !window.confirm(
+        "Reiniciar la tierlist borrara los cambios actuales de esta pantalla. ¿Quieres continuar?",
+      )
+    ) {
+      return;
+    }
+
     setItems(initialItems);
     setTiers(initialTiers);
     setItemLocations(getResetLocations());
@@ -521,7 +534,7 @@ export function TierListBuilder() {
                 Borrador local, listo para organizar tus elementos.
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:justify-end">
               <label
                 htmlFor="tier-template-selector"
                 className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-300"
@@ -544,43 +557,49 @@ export function TierListBuilder() {
               <button
                 type="button"
                 onClick={handleSaveProgress}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 sm:h-10"
               >
                 Guardar progreso
               </button>
               <button
                 type="button"
                 onClick={handleLoadProgress}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 sm:h-10"
               >
                 Cargar progreso
               </button>
               <button
                 type="button"
                 onClick={handleResetTierList}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-rose-300/40 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-rose-300/40 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20 sm:h-10"
               >
                 Reiniciar tierlist
               </button>
               <button
                 type="button"
                 onClick={handleAddTier}
-                className="inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+                className="inline-flex h-11 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 sm:h-10"
               >
                 Agregar tier
               </button>
-              <span className="w-fit rounded-md bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-950">
+              <span className="inline-flex h-11 items-center justify-center rounded-md bg-white px-3 text-xs font-bold uppercase tracking-wide text-slate-950 sm:h-10">
                 Arrastra y suelta
               </span>
               <button
                 type="button"
                 onClick={handleExportImage}
                 disabled={isExporting}
-                className="inline-flex h-10 items-center justify-center rounded-md bg-amber-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center rounded-md bg-amber-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10"
               >
                 {isExporting ? "Exportando..." : "Exportar como imagen"}
               </button>
             </div>
+          </div>
+          <div className="mb-3 grid gap-2 rounded-md border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300 sm:grid-cols-2 xl:grid-cols-4">
+            <p>Arrastra tarjetas desde la bandeja hacia cualquier tier.</p>
+            <p>Sube imagenes locales para crear tarjetas nuevas.</p>
+            <p>Exporta el ranking como PNG cuando este listo.</p>
+            <p>Guarda el progreso localmente en este navegador.</p>
           </div>
           {statusMessage ? (
             <p className="mb-3 rounded-md border border-white/10 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">

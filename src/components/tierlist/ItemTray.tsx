@@ -23,9 +23,13 @@ export function ItemTray({ items, onUploadImages, renderItem }: ItemTrayProps) {
           <h2 className="mt-1 text-2xl font-semibold text-slate-950">
             Elementos de ejemplo
           </h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+            Arrastra tarjetas a los tiers o sube imagenes desde tu equipo para
+            crear nuevos items locales.
+          </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+          <label className="inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 sm:w-auto">
             Subir imagenes
             <input
               type="file"
@@ -50,7 +54,9 @@ export function ItemTray({ items, onUploadImages, renderItem }: ItemTrayProps) {
         ref={setNodeRef}
         data-testid="item-tray-dropzone"
         className={`mt-5 min-h-36 rounded-md border border-dashed p-3 transition ${
-          isOver ? "border-rose-400 bg-rose-50" : "border-transparent bg-slate-50"
+          isOver
+            ? "border-rose-400 bg-rose-50 ring-4 ring-rose-100"
+            : "border-transparent bg-slate-50"
         }`}
       >
         {items.length > 0 ? (
@@ -58,8 +64,14 @@ export function ItemTray({ items, onUploadImages, renderItem }: ItemTrayProps) {
             {items.map(renderItem)}
           </div>
         ) : (
-          <div className="flex min-h-28 items-center justify-center text-center text-sm font-medium text-slate-400">
-            Todos los elementos estan ubicados en tiers
+          <div className="flex min-h-28 flex-col items-center justify-center gap-1 text-center">
+            <p className="text-sm font-semibold text-slate-500">
+              La bandeja esta vacia
+            </p>
+            <p className="text-xs leading-5 text-slate-400">
+              Puedes mover tarjetas de vuelta desde cualquier tier o subir mas
+              imagenes.
+            </p>
           </div>
         )}
       </div>

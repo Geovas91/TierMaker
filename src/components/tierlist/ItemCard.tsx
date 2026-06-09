@@ -13,7 +13,7 @@ export function ItemCard({
 }: ItemCardProps) {
   return (
     <article
-      className={`group overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${className}`}
+      className={`group overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm ring-0 ring-rose-300 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-2 ${className}`}
     >
       {imageUrl ? (
         <div

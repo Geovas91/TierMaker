@@ -37,7 +37,11 @@ export function TierRow({
   const { isOver, setNodeRef } = useDroppable({ id: containerId });
 
   return (
-    <section className="grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm sm:grid-cols-[6rem_1fr]">
+    <section
+      className={`grid overflow-hidden rounded-lg border bg-white shadow-sm transition sm:grid-cols-[6rem_1fr] ${
+        isOver ? "border-rose-300 shadow-rose-200/70" : "border-slate-200"
+      }`}
+    >
       <TierLabel
         label={label}
         colorClassName={colorClassName}
@@ -74,9 +78,9 @@ export function TierRow({
         <div
           ref={setNodeRef}
           data-testid={`tier-dropzone-${containerId}`}
-          className={`min-h-20 rounded-md border border-dashed px-4 py-4 transition ${
+          className={`min-h-24 rounded-md border border-dashed px-4 py-4 transition ${
             isOver
-              ? "border-rose-400 bg-rose-50"
+              ? "border-rose-400 bg-rose-50 ring-4 ring-rose-100"
               : "border-slate-300 bg-white/80"
           }`}
         >
@@ -85,8 +89,13 @@ export function TierRow({
               {items.map(renderItem)}
             </div>
           ) : (
-            <div className="flex min-h-12 items-center justify-center text-center text-sm font-medium text-slate-400">
-              Arrastra elementos aqui
+            <div className="flex min-h-16 flex-col items-center justify-center gap-1 text-center">
+              <p className="text-sm font-semibold text-slate-500">
+                Este tier esta vacio
+              </p>
+              <p className="text-xs leading-5 text-slate-400">
+                Arrastra una tarjeta desde la bandeja o desde otro tier.
+              </p>
             </div>
           )}
         </div>
