@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -16,6 +16,8 @@ import { ItemCard } from "./ItemCard";
 import { ItemTray } from "./ItemTray";
 import { TierRow } from "./TierRow";
 import type { ContainerId, Tier, TierItem } from "./types";
+
+const storageKey = "tiermaker:tierlist-builder:v1";
 
 const initialTiers: Tier[] = [
   { id: "tier-s", label: "S", colorClassName: "bg-rose-500", isDefault: true },
@@ -56,6 +58,12 @@ const initialLocations = initialItems.reduce<Record<string, ContainerId>>(
   {},
 );
 
+type SavedTierListState = {
+  itemLocations: Record<string, ContainerId>;
+  items: TierItem[];
+  tiers: Tier[];
+};
+
 function DraggableCard({ item }: { item: TierItem }) {
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useDraggable({
@@ -93,9 +101,9 @@ export function TierListBuilder() {
   const [itemLocations, setItemLocations] = useState(initialLocations);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   const customTierCountRef = useRef(0);
-  const exportRef = useRef<HTMLElement | null>(null);
-  const objectUrlsRef = useRef<Set<string>>(new Set());
+  const exportRef = useRef<HTMLDivElement | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -131,15 +139,6 @@ export function TierListBuilder() {
     ? items.find((item) => item.id === activeItemId)
     : undefined;
 
-  useEffect(() => {
-    const objectUrls = objectUrlsRef.current;
-
-    return () => {
-      objectUrls.forEach((url) => URL.revokeObjectURL(url));
-      objectUrls.clear();
-    };
-  }, []);
-
   function createUploadId(file: File) {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
       return `upload-${crypto.randomUUID()}`;
@@ -152,7 +151,24 @@ export function TierListBuilder() {
     return filename.replace(/\.[^/.]+$/, "") || "Imagen subida";
   }
 
-  function handleUploadImages(files: FileList) {
+  function readImageAsDataUrl(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+
+        reject(new Error("No se pudo leer la imagen."));
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleUploadImages(files: FileList) {
     const imageFiles = Array.from(files).filter((file) =>
       file.type.startsWith("image/"),
     );
@@ -161,17 +177,14 @@ export function TierListBuilder() {
       return;
     }
 
-    const uploadedItems = imageFiles.map<TierItem>((file) => {
-      const imageUrl = URL.createObjectURL(file);
-      objectUrlsRef.current.add(imageUrl);
-
-      return {
+    const uploadedItems = await Promise.all(
+      imageFiles.map(async (file) => ({
         id: createUploadId(file),
         title: getTitleFromFilename(file.name),
         accentClassName: "bg-slate-200",
-        imageUrl,
-      };
-    });
+        imageUrl: await readImageAsDataUrl(file),
+      })),
+    );
 
     setItems((current) => [...current, ...uploadedItems]);
     setItemLocations((current) => ({
@@ -181,6 +194,7 @@ export function TierListBuilder() {
         return locations;
       }, {}),
     }));
+    setStatusMessage(`${uploadedItems.length} imagen(es) agregada(s).`);
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -270,6 +284,78 @@ export function TierListBuilder() {
     });
   }
 
+  function getResetLocations() {
+    return initialItems.reduce<Record<string, ContainerId>>((locations, item) => {
+      locations[item.id] = "tray";
+      return locations;
+    }, {});
+  }
+
+  function getNextCustomTierCount(savedTiers: Tier[]) {
+    return savedTiers.filter((tier) => !tier.isDefault).length;
+  }
+
+  function isSavedTierListState(value: unknown): value is SavedTierListState {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+
+    const candidate = value as Partial<SavedTierListState>;
+
+    return (
+      Array.isArray(candidate.items) &&
+      Array.isArray(candidate.tiers) &&
+      Boolean(candidate.itemLocations) &&
+      typeof candidate.itemLocations === "object"
+    );
+  }
+
+  function handleSaveProgress() {
+    const stateToSave: SavedTierListState = {
+      itemLocations,
+      items,
+      tiers,
+    };
+
+    localStorage.setItem(storageKey, JSON.stringify(stateToSave));
+    setStatusMessage("Progreso guardado en este navegador.");
+  }
+
+  function handleLoadProgress() {
+    const savedValue = localStorage.getItem(storageKey);
+
+    if (!savedValue) {
+      setStatusMessage("No hay progreso guardado en este navegador.");
+      return;
+    }
+
+    try {
+      const parsedValue: unknown = JSON.parse(savedValue);
+
+      if (!isSavedTierListState(parsedValue)) {
+        setStatusMessage("El progreso guardado no tiene un formato valido.");
+        return;
+      }
+
+      setItems(parsedValue.items);
+      setTiers(parsedValue.tiers);
+      setItemLocations(parsedValue.itemLocations);
+      customTierCountRef.current = getNextCustomTierCount(parsedValue.tiers);
+      setStatusMessage("Progreso cargado.");
+    } catch {
+      setStatusMessage("No se pudo cargar el progreso guardado.");
+    }
+  }
+
+  function handleResetTierList() {
+    setItems(initialItems);
+    setTiers(initialTiers);
+    setItemLocations(getResetLocations());
+    setActiveItemId(null);
+    customTierCountRef.current = 0;
+    setStatusMessage("Tierlist reiniciada.");
+  }
+
   async function handleExportImage() {
     if (!exportRef.current || isExporting) {
       return;
@@ -302,11 +388,7 @@ export function TierListBuilder() {
       onDragCancel={() => setActiveItemId(null)}
     >
       <div className="grid gap-6">
-        <section
-          ref={exportRef}
-          data-testid="tierlist-export-area"
-          className="rounded-lg border border-slate-200 bg-slate-950 p-3 shadow-xl shadow-slate-200"
-        >
+        <section className="rounded-lg border border-slate-200 bg-slate-950 p-3 shadow-xl shadow-slate-200">
           <div className="mb-3 flex flex-col gap-3 rounded-md bg-slate-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-white">Mi nueva tier list</p>
@@ -315,6 +397,27 @@ export function TierListBuilder() {
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={handleSaveProgress}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+              >
+                Guardar progreso
+              </button>
+              <button
+                type="button"
+                onClick={handleLoadProgress}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700"
+              >
+                Cargar progreso
+              </button>
+              <button
+                type="button"
+                onClick={handleResetTierList}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-rose-300/40 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+              >
+                Reiniciar tierlist
+              </button>
               <button
                 type="button"
                 onClick={handleAddTier}
@@ -335,8 +438,17 @@ export function TierListBuilder() {
               </button>
             </div>
           </div>
+          {statusMessage ? (
+            <p className="mb-3 rounded-md border border-white/10 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300">
+              {statusMessage}
+            </p>
+          ) : null}
 
-          <div className="grid gap-3">
+          <div
+            ref={exportRef}
+            data-testid="tierlist-export-area"
+            className="grid gap-3"
+          >
             {tiers.map((tier, index) => (
               <TierRow
                 key={tier.id}
