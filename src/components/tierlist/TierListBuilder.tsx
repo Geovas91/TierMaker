@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -12,12 +13,15 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import type { User } from "@supabase/supabase-js";
 import { ItemCard } from "./ItemCard";
 import { ItemTray } from "./ItemTray";
 import { TierRow } from "./TierRow";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { ContainerId, Tier, TierItem } from "./types";
 
 const storageKey = "tiermaker:tierlist-builder:v1";
+const defaultTierListTitle = "Mi nueva tier list";
 
 const initialTiers: Tier[] = [
   { id: "tier-s", label: "S", colorClassName: "bg-rose-500", isDefault: true },
@@ -129,6 +133,21 @@ type SavedTierListState = {
   itemLocations: Record<string, ContainerId>;
   items: TierItem[];
   tiers: Tier[];
+  title?: string;
+};
+
+type RemoteTierList = {
+  created_at: string;
+  data: unknown;
+  id: string;
+  title: string;
+  updated_at: string;
+};
+
+type RemoteTierListSummary = Omit<RemoteTierList, "data">;
+
+type RemoteTierListPayload = SavedTierListState & {
+  title: string;
 };
 
 function DraggableCard({ item }: { item: TierItem }) {
@@ -167,6 +186,7 @@ function DraggableCard({ item }: { item: TierItem }) {
 }
 
 export function TierListBuilder() {
+  const [tierListTitle, setTierListTitle] = useState(defaultTierListTitle);
   const [items, setItems] = useState(initialItems);
   const [tiers, setTiers] = useState(initialTiers);
   const [itemLocations, setItemLocations] = useState(initialLocations);
@@ -174,6 +194,16 @@ export function TierListBuilder() {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [remoteTierLists, setRemoteTierLists] = useState<RemoteTierListSummary[]>(
+    [],
+  );
+  const [selectedRemoteTierListId, setSelectedRemoteTierListId] = useState<
+    string | null
+  >(null);
+  const [remoteMessage, setRemoteMessage] = useState("");
+  const [isRemoteBusy, setIsRemoteBusy] = useState(false);
   const customTierCountRef = useRef(0);
   const exportRef = useRef<HTMLDivElement | null>(null);
 
@@ -211,6 +241,88 @@ export function TierListBuilder() {
     ? items.find((item) => item.id === activeItemId)
     : undefined;
 
+  const fetchRemoteTierLists = useCallback(async (userId: string) => {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("tier_lists")
+        .select("id,title,created_at,updated_at")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        setRemoteMessage(error.message);
+        return;
+      }
+
+      setRemoteTierLists((data ?? []) as RemoteTierListSummary[]);
+    } catch (error) {
+      if (error instanceof Error) {
+        setRemoteMessage(error.message);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe: (() => void) | undefined;
+
+    async function initializeRemoteAuth() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data, error } = await supabase.auth.getUser();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (error) {
+          setRemoteMessage(error.message);
+        }
+
+        setAuthUser(data.user);
+        setIsAuthReady(true);
+
+        if (data.user) {
+          await fetchRemoteTierLists(data.user.id);
+        }
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          setAuthUser(session?.user ?? null);
+          setIsAuthReady(true);
+
+          if (session?.user) {
+            fetchRemoteTierLists(session.user.id);
+          } else {
+            setRemoteTierLists([]);
+            setSelectedRemoteTierListId(null);
+          }
+        });
+
+        unsubscribe = () => subscription.unsubscribe();
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        if (error instanceof Error) {
+          setRemoteMessage(error.message);
+        }
+
+        setIsAuthReady(true);
+      }
+    }
+
+    initializeRemoteAuth();
+
+    return () => {
+      isMounted = false;
+      unsubscribe?.();
+    };
+  }, [fetchRemoteTierLists]);
+
   function createUploadId(file: File) {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
       return `upload-${crypto.randomUUID()}`;
@@ -240,6 +352,7 @@ export function TierListBuilder() {
 
   function hasExistingProgress() {
     return (
+      tierListTitle !== defaultTierListTitle ||
       JSON.stringify(items) !== JSON.stringify(initialItems) ||
       JSON.stringify(tiers) !== JSON.stringify(initialTiers) ||
       JSON.stringify(itemLocations) !== JSON.stringify(initialLocations)
@@ -410,6 +523,7 @@ export function TierListBuilder() {
       itemLocations,
       items,
       tiers,
+      title: tierListTitle,
     };
 
     localStorage.setItem(storageKey, JSON.stringify(stateToSave));
@@ -435,8 +549,10 @@ export function TierListBuilder() {
       setItems(parsedValue.items);
       setTiers(parsedValue.tiers);
       setItemLocations(parsedValue.itemLocations);
+      setTierListTitle(parsedValue.title ?? defaultTierListTitle);
       customTierCountRef.current = getNextCustomTierCount(parsedValue.tiers);
       setSelectedTemplateId("");
+      setSelectedRemoteTierListId(null);
       setStatusMessage("Progreso cargado.");
     } catch {
       setStatusMessage("No se pudo cargar el progreso guardado.");
@@ -456,8 +572,10 @@ export function TierListBuilder() {
     setItems(initialItems);
     setTiers(initialTiers);
     setItemLocations(getResetLocations());
+    setTierListTitle(defaultTierListTitle);
     setActiveItemId(null);
     setSelectedTemplateId("");
+    setSelectedRemoteTierListId(null);
     customTierCountRef.current = 0;
     setStatusMessage("Tierlist reiniciada.");
   }
@@ -488,10 +606,139 @@ export function TierListBuilder() {
     setItems(templateItems);
     setTiers(initialTiers);
     setItemLocations(buildTrayLocations(templateItems));
+    setTierListTitle(`${template.name} tier list`);
     setActiveItemId(null);
     setSelectedTemplateId(templateId);
+    setSelectedRemoteTierListId(null);
     customTierCountRef.current = 0;
     setStatusMessage(`Plantilla "${template.name}" cargada.`);
+  }
+
+  function buildRemotePayload(): RemoteTierListPayload {
+    return {
+      itemLocations,
+      items,
+      tiers,
+      title: tierListTitle,
+    };
+  }
+
+  async function handleSaveToAccount() {
+    if (!authUser) {
+      setRemoteMessage("Inicia sesion para guardar tierlists en tu cuenta.");
+      return;
+    }
+
+    setIsRemoteBusy(true);
+    setRemoteMessage("");
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const payload = buildRemotePayload();
+
+      if (selectedRemoteTierListId) {
+        const { error } = await supabase
+          .from("tier_lists")
+          .update({
+            data: payload,
+            title: tierListTitle.trim() || defaultTierListTitle,
+          })
+          .eq("id", selectedRemoteTierListId)
+          .eq("user_id", authUser.id);
+
+        if (error) {
+          setRemoteMessage(error.message);
+          return;
+        }
+
+        setRemoteMessage("Tierlist actualizada en tu cuenta.");
+      } else {
+        const { data, error } = await supabase
+          .from("tier_lists")
+          .insert({
+            data: payload,
+            is_public: false,
+            title: tierListTitle.trim() || defaultTierListTitle,
+            user_id: authUser.id,
+          })
+          .select("id,title,created_at,updated_at")
+          .single();
+
+        if (error) {
+          setRemoteMessage(error.message);
+          return;
+        }
+
+        const savedTierList = data as RemoteTierListSummary;
+
+        setSelectedRemoteTierListId(savedTierList.id);
+        setRemoteMessage("Tierlist guardada en tu cuenta.");
+      }
+
+      await fetchRemoteTierLists(authUser.id);
+    } catch (error) {
+      if (error instanceof Error) {
+        setRemoteMessage(error.message);
+      }
+    } finally {
+      setIsRemoteBusy(false);
+    }
+  }
+
+  async function handleLoadRemoteTierList(tierListId: string) {
+    if (!authUser) {
+      setRemoteMessage("Inicia sesion para cargar tierlists de tu cuenta.");
+      return;
+    }
+
+    if (
+      hasExistingProgress() &&
+      !window.confirm(
+        "Cargar una tierlist guardada reemplazara la pantalla actual. ¿Quieres continuar?",
+      )
+    ) {
+      return;
+    }
+
+    setIsRemoteBusy(true);
+    setRemoteMessage("");
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("tier_lists")
+        .select("id,title,data,created_at,updated_at")
+        .eq("id", tierListId)
+        .eq("user_id", authUser.id)
+        .single();
+
+      if (error) {
+        setRemoteMessage(error.message);
+        return;
+      }
+
+      const remoteTierList = data as RemoteTierList;
+
+      if (!isSavedTierListState(remoteTierList.data)) {
+        setRemoteMessage("La tierlist guardada no tiene un formato valido.");
+        return;
+      }
+
+      setItems(remoteTierList.data.items);
+      setTiers(remoteTierList.data.tiers);
+      setItemLocations(remoteTierList.data.itemLocations);
+      setTierListTitle(remoteTierList.title);
+      customTierCountRef.current = getNextCustomTierCount(remoteTierList.data.tiers);
+      setSelectedTemplateId("");
+      setSelectedRemoteTierListId(remoteTierList.id);
+      setRemoteMessage("Tierlist cargada desde tu cuenta.");
+    } catch (error) {
+      if (error instanceof Error) {
+        setRemoteMessage(error.message);
+      }
+    } finally {
+      setIsRemoteBusy(false);
+    }
   }
 
   async function handleExportImage() {
@@ -528,8 +775,17 @@ export function TierListBuilder() {
       <div className="grid gap-6">
         <section className="rounded-lg border border-slate-200 bg-slate-950 p-3 shadow-xl shadow-slate-200">
           <div className="mb-3 flex flex-col gap-3 rounded-md bg-slate-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-white">Mi nueva tier list</p>
+            <div className="grid gap-2">
+              <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Titulo
+                <input
+                  type="text"
+                  value={tierListTitle}
+                  onChange={(event) => setTierListTitle(event.target.value)}
+                  className="h-11 w-full max-w-md rounded-md border border-white/15 bg-slate-800 px-3 text-base font-semibold normal-case tracking-normal text-white outline-none transition placeholder:text-slate-500 hover:bg-slate-700 focus:border-amber-300 sm:h-10"
+                  placeholder={defaultTierListTitle}
+                />
+              </label>
               <p className="text-sm text-slate-400">
                 Borrador local, listo para organizar tus elementos.
               </p>
@@ -560,6 +816,14 @@ export function TierListBuilder() {
                 className="inline-flex h-11 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 sm:h-10"
               >
                 Guardar progreso
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveToAccount}
+                disabled={isRemoteBusy}
+                className="inline-flex h-11 items-center justify-center rounded-md bg-emerald-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10"
+              >
+                {isRemoteBusy ? "Guardando..." : "Guardar en mi cuenta"}
               </button>
               <button
                 type="button"
@@ -606,6 +870,95 @@ export function TierListBuilder() {
               {statusMessage}
             </p>
           ) : null}
+
+          <section className="mb-3 rounded-md border border-white/10 bg-slate-900 px-4 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-white">
+                  Mis tierlists
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-slate-400">
+                  Guarda y carga rankings desde Supabase cuando hayas iniciado
+                  sesion.
+                </p>
+              </div>
+              {authUser ? (
+                <button
+                  type="button"
+                  onClick={() => fetchRemoteTierLists(authUser.id)}
+                  disabled={isRemoteBusy}
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-slate-800 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Actualizar lista
+                </button>
+              ) : null}
+            </div>
+
+            {!isAuthReady ? (
+              <p className="mt-4 rounded-md border border-white/10 bg-slate-950 px-4 py-3 text-sm font-medium text-slate-300">
+                Revisando sesion...
+              </p>
+            ) : authUser ? (
+              <div className="mt-4 grid gap-3">
+                <p className="text-sm text-slate-400">
+                  Sesion activa:{" "}
+                  <span className="font-semibold text-slate-200">
+                    {authUser.email}
+                  </span>
+                </p>
+                {remoteTierLists.length > 0 ? (
+                  <div className="grid gap-2">
+                    {remoteTierLists.map((tierList) => (
+                      <article
+                        key={tierList.id}
+                        className={`flex flex-col gap-3 rounded-md border px-3 py-3 sm:flex-row sm:items-center sm:justify-between ${
+                          selectedRemoteTierListId === tierList.id
+                            ? "border-emerald-300 bg-emerald-300/10"
+                            : "border-white/10 bg-slate-950"
+                        }`}
+                      >
+                        <div>
+                          <p className="font-semibold text-white">
+                            {tierList.title}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            Actualizada:{" "}
+                            {new Date(tierList.updated_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleLoadRemoteTierList(tierList.id)}
+                          disabled={isRemoteBusy}
+                          className="inline-flex h-10 items-center justify-center rounded-md bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Cargar
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-md border border-white/10 bg-slate-950 px-4 py-3 text-sm font-medium text-slate-300">
+                    Todavia no hay tierlists guardadas en tu cuenta.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-4 rounded-md border border-white/10 bg-slate-950 px-4 py-3 text-sm font-medium text-slate-300">
+                <Link href="/login" className="font-semibold text-amber-300">
+                  Inicia sesion
+                </Link>{" "}
+                para guardar y cargar tierlists en tu cuenta. El guardado local
+                sigue disponible.
+              </p>
+            )}
+
+            {remoteMessage ? (
+              <p className="mt-3 rounded-md border border-white/10 bg-slate-950 px-4 py-3 text-sm font-medium text-slate-300">
+                {remoteMessage}
+              </p>
+            ) : null}
+          </section>
 
           <div
             ref={exportRef}
