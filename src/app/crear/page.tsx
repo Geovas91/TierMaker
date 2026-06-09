@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthStatus } from "@/components/auth/AuthStatus";
 import { TierListBuilder } from "@/components/tierlist/TierListBuilder";
 
 export default function CrearPage() {
@@ -9,12 +10,15 @@ export default function CrearPage() {
           <Link href="/" className="text-xl font-black tracking-tight">
             TierMaker
           </Link>
-          <Link
-            href="/"
-            className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Volver al inicio
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              href="/"
+              className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Volver al inicio
+            </Link>
+            <AuthStatus />
+          </div>
         </div>
       </header>
 

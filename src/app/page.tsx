@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { AuthStatus } from "@/components/auth/AuthStatus";
+
 const tiers = [
   {
     label: "S",
@@ -54,7 +57,15 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-        <div className="mx-auto grid min-h-[92vh] w-full max-w-7xl items-center gap-12 px-6 py-8 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:px-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-6 py-6 sm:px-8 lg:px-12">
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <Link href="/" className="text-xl font-black tracking-tight">
+              TierMaker
+            </Link>
+            <AuthStatus />
+          </header>
+
+          <div className="grid min-h-[82vh] items-center gap-12 lg:grid-cols-[0.92fr_1.08fr]">
           <div className="max-w-2xl">
             <p className="mb-5 inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
               Portal de tier lists en español
@@ -125,6 +136,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </section>
