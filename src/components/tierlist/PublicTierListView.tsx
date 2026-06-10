@@ -43,6 +43,8 @@ export function PublicTierListView({ id }: PublicTierListViewProps) {
   const [tierList, setTierList] = useState<PublicTierListRow | null>(null);
   const [message, setMessage] = useState("Cargando tierlist...");
   const [isExporting, setIsExporting] = useState(false);
+  const [isCopyingImage, setIsCopyingImage] = useState(false);
+  const [imageMessage, setImageMessage] = useState("");
   const exportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -144,6 +146,46 @@ export function PublicTierListView({ id }: PublicTierListViewProps) {
     }
   }
 
+  async function handleCopyImage() {
+    if (!exportRef.current || isCopyingImage) {
+      return;
+    }
+
+    if (!("ClipboardItem" in window) || !navigator.clipboard?.write) {
+      setImageMessage(
+        'Tu navegador no permite copiar imagenes. Usa "Exportar PNG" para descargarla.',
+      );
+      return;
+    }
+
+    setIsCopyingImage(true);
+    setImageMessage("");
+
+    try {
+      const { toBlob } = await import("html-to-image");
+      const blob = await toBlob(exportRef.current, {
+        backgroundColor: "#020617",
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+
+      if (!blob) {
+        throw new Error("No se pudo generar la imagen.");
+      }
+
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      setImageMessage("Imagen copiada al portapapeles.");
+    } catch {
+      setImageMessage(
+        'No se pudo copiar la imagen. Usa "Exportar PNG" para descargarla.',
+      );
+    } finally {
+      setIsCopyingImage(false);
+    }
+  }
+
   if (message) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -189,15 +231,34 @@ export function PublicTierListView({ id }: PublicTierListViewProps) {
             Ver perfil del creador
           </Link>
         </div>
-        <button
-          type="button"
-          onClick={handleExportImage}
-          disabled={isExporting}
-          className="inline-flex h-11 items-center justify-center rounded-md bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isExporting ? "Exportando..." : "Exportar PNG"}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleCopyImage}
+            disabled={isCopyingImage || isExporting}
+            className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isCopyingImage ? "Copiando..." : "Copiar imagen"}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportImage}
+            disabled={isExporting || isCopyingImage}
+            className="inline-flex h-11 items-center justify-center rounded-md bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isExporting ? "Exportando..." : "Exportar PNG"}
+          </button>
+        </div>
       </div>
+
+      {imageMessage ? (
+        <p
+          aria-live="polite"
+          className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm"
+        >
+          {imageMessage}
+        </p>
+      ) : null}
 
       <div className="rounded-lg border border-slate-200 bg-slate-950 p-3 shadow-xl shadow-slate-200">
         <div ref={exportRef} className="grid gap-3">

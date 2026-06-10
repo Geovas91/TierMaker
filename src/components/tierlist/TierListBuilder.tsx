@@ -195,6 +195,7 @@ export function TierListBuilder() {
   const [itemLocations, setItemLocations] = useState(initialLocations);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isCopyingImage, setIsCopyingImage] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -785,6 +786,45 @@ export function TierListBuilder() {
     }
   }
 
+  async function handleCopyImage() {
+    if (!exportRef.current || isCopyingImage) {
+      return;
+    }
+
+    if (!("ClipboardItem" in window) || !navigator.clipboard?.write) {
+      setStatusMessage(
+        'Tu navegador no permite copiar imagenes. Usa "Exportar como imagen" para descargar el PNG.',
+      );
+      return;
+    }
+
+    setIsCopyingImage(true);
+
+    try {
+      const { toBlob } = await import("html-to-image");
+      const blob = await toBlob(exportRef.current, {
+        backgroundColor: "#020617",
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+
+      if (!blob) {
+        throw new Error("No se pudo generar la imagen.");
+      }
+
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      setStatusMessage("Imagen copiada al portapapeles.");
+    } catch {
+      setStatusMessage(
+        'No se pudo copiar la imagen. Usa "Exportar como imagen" para descargar el PNG.',
+      );
+    } finally {
+      setIsCopyingImage(false);
+    }
+  }
+
   function copyTextWithFallback(value: string) {
     const textArea = document.createElement("textarea");
 
@@ -939,10 +979,18 @@ export function TierListBuilder() {
               <button
                 type="button"
                 onClick={handleExportImage}
-                disabled={isExporting}
+                disabled={isExporting || isCopyingImage}
                 className="inline-flex h-11 items-center justify-center rounded-md bg-amber-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10"
               >
                 {isExporting ? "Exportando..." : "Exportar como imagen"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyImage}
+                disabled={isCopyingImage || isExporting}
+                className="inline-flex h-11 items-center justify-center rounded-md border border-amber-300/50 bg-amber-300/10 px-4 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/20 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10"
+              >
+                {isCopyingImage ? "Copiando..." : "Copiar imagen"}
               </button>
             </div>
           </div>
